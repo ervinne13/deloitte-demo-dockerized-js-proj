@@ -1,0 +1,70 @@
+version: "3.2"
+
+services:
+  deloitte1-db:
+    container_name: deloitte1-db
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - deloitte1
+    volumes:
+      - deloitte1-db-vol:/var/lib/mysql
+      - ./create-db.sql:/docker-entrypoint-initdb.d/1.sql
+
+  deloitte1-backend:
+    container_name: deloitte1-backend
+    image: backend-frontend:latest
+    build:
+      context: ./
+      dockerfile: ./backend/Dockerfile
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./backend:/var/www/deloitte/backend
+      - //var/www/deloitte/backend/node_modules
+    networks:
+      - deloitte1
+    stdin_open: true
+    depends_on:
+      - deloitte1-db
+
+  deloitte1-frontend:
+    container_name: deloitte1-frontend
+    image: deloitte1-frontend:latest
+    build:
+      context: ./
+      dockerfile: ./frontend/Dockerfile
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/var/www/deloitte/frontend
+      - //var/www/deloitte/frontend/node_modules
+    networks:
+      - deloitte1
+    stdin_open: true
+    depends_on:
+      - deloitte1-backend
+  deloitte1-nginx:
+    container_name: deloitte1-nginx
+    image: deloitte1-nginx:latest
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/certs:/etc/ssl
+    networks:
+      - deloitte1
+    tty: true
+    stdin_open: true
+    depends_on:
+      - deloitte1-backend
+      - deloitte1-frontend
+networks:
+  deloitte1:
+volumes:
+  deloitte1-db-vol:
